@@ -10,14 +10,18 @@ Generates text for touch-typing practice.
 2. Run the generator:
 
    ```bash
-   python poetry_typing.py            # reads from verses.txt by default
-   python poetry_typing.py my_poem.txt  # use a different verse file
-   python poetry_typing.py --single-line verses.txt  # emit a single joined line
+   python poetry_typing.py                # writes results/result-YYYYMMDD-HHMMSS.txt
+   python poetry_typing.py my_poem.txt    # custom verses file
+   python poetry_typing.py --single-line  # one joined line
+   python poetry_typing.py --out-dir out  # custom output directory
    ```
+
+Each run produces a timestamped text file containing the generated prompts. The
+script prints the absolute path of that file to standard output.
 
 Each emitted line will contain the verse, a four-digit number between 1000 and
 9999, and two symbols selected from the set shown below. By default the script
-prints one prompt per line; pass `--single-line` to emit all prompts on a single
+writes one prompt per line; pass `--single-line` to emit all prompts on a single
 line separated by spaces.
 
 ```

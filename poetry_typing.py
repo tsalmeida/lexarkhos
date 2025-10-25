@@ -7,6 +7,7 @@ are generated according to the specification described in the project README.
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 import random
 from pathlib import Path
 from typing import Iterable
@@ -81,6 +82,23 @@ def build_parser() -> argparse.ArgumentParser:
             "Emit all generated prompts on a single line separated by spaces."
         ),
     )
+    parser.add_argument(
+        "--out-dir",
+        default="results",
+        type=Path,
+        help=(
+            "Directory where the generated prompts file will be written. "
+            "Defaults to 'results'."
+        ),
+    )
+    parser.add_argument(
+        "--timestamp-format",
+        default="%Y%m%d-%H%M%S",
+        help=(
+            "strftime-compatible format string for the output filename "
+            "timestamp."
+        ),
+    )
     return parser
 
 
@@ -93,7 +111,7 @@ def main(argv: list[str] | None = None) -> None:
 
     verses_file: Path = args.verses_file
     if not verses_file.exists():
-        raise SystemExit(f"Verse file not found: {verses_file}")
+        parser.error(f"Verse file not found: {verses_file}")
 
     verses = list(iter_verses(verses_file))
     if args.count is not None:
@@ -102,11 +120,16 @@ def main(argv: list[str] | None = None) -> None:
     prompts = [generate_prompt(verse) for verse in verses]
 
     if args.single_line:
-        if prompts:
-            print(" ".join(prompts))
+        output = " ".join(prompts) + "\n"
     else:
-        for prompt in prompts:
-            print(prompt)
+        output = "\n".join(prompts) + "\n"
+
+    timestamp = datetime.now().strftime(args.timestamp_format)
+    out_dir: Path = args.out_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / f"result-{timestamp}.txt"
+    out_path.write_text(output, encoding="utf-8")
+    print(str(out_path.resolve()))
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry point
