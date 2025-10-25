@@ -9,25 +9,62 @@ from __future__ import annotations
 import argparse
 from datetime import datetime
 import random
+import re
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, List
 
 SYMBOLS = "~`!@#$%^&*()-_=+[]{};:'\",.<>/?\\|"
+SPACE_RE = re.compile(r" {2,}")
+
+
+def clean_line(text: str) -> str:
+    """Normalise whitespace within *text* and strip the result."""
+
+    text = text.replace("\t", " ")
+    text = SPACE_RE.sub(" ", text)
+    return text.strip()
 
 
 def iter_verses(path: Path) -> Iterable[str]:
-    """Yield verses from *path*, skipping empty lines.
-
-    Lines are yielded in the exact order they appear in the file. Empty lines
-    are ignored to avoid emitting blank practice prompts that contain only the
-    number and symbol block.
-    """
+    """Yield cleaned verses from *path*, skipping empty lines."""
 
     with path.open("r", encoding="utf-8") as handle:
-        for line in handle:
-            verse = line.rstrip("\n")
-            if verse.strip():
+        for raw_line in handle:
+            verse = clean_line(raw_line.rstrip("\n"))
+            if verse:
                 yield verse
+
+
+def concat_short_lines(lines: List[str], min_len: int) -> List[str]:
+    """Join consecutive short *lines* using random single-symbol separators."""
+
+    if min_len <= 0:
+        return lines
+
+    joined: list[str] = []
+    buffer: list[str] = []
+    current_length = 0
+
+    for line in lines:
+        if not buffer:
+            buffer.append(line)
+            current_length = len(line)
+            continue
+
+        if current_length < min_len:
+            symbol = random.choice(SYMBOLS)
+            fragment = f" {symbol} {line}"
+            buffer.append(fragment)
+            current_length += len(fragment)
+        else:
+            joined.append("".join(buffer))
+            buffer = [line]
+            current_length = len(line)
+
+    if buffer:
+        joined.append("".join(buffer))
+
+    return joined
 
 
 def generate_prompt(verse: str) -> str:
@@ -38,7 +75,7 @@ def generate_prompt(verse: str) -> str:
     """
 
     number = random.randint(1000, 9999)
-    symbols = "".join(random.sample(SYMBOLS, 2))
+    symbols = random.choice(SYMBOLS) + random.choice(SYMBOLS)
     return f"{verse} {number} {symbols}"
 
 
@@ -99,6 +136,15 @@ def build_parser() -> argparse.ArgumentParser:
             "timestamp."
         ),
     )
+    parser.add_argument(
+        "--min-line-length",
+        type=int,
+        default=30,
+        help=(
+            "Concatenate consecutive short lines until this minimum length is "
+            "reached. Set to 0 to disable concatenation."
+        ),
+    )
     return parser
 
 
@@ -114,6 +160,7 @@ def main(argv: list[str] | None = None) -> None:
         parser.error(f"Verse file not found: {verses_file}")
 
     verses = list(iter_verses(verses_file))
+    verses = concat_short_lines(verses, args.min_line_length)
     if args.count is not None:
         verses = verses[: args.count]
 
@@ -128,7 +175,7 @@ def main(argv: list[str] | None = None) -> None:
     out_dir: Path = args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"result-{timestamp}.txt"
-    out_path.write_text(output, encoding="utf-8")
+    out_path.write_text(output.replace("\t", " "), encoding="utf-8")
     print(str(out_path.resolve()))
 
 
