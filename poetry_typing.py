@@ -74,6 +74,13 @@ def build_parser() -> argparse.ArgumentParser:
             "Optional random seed for reproducible number and symbol blocks."
         ),
     )
+    parser.add_argument(
+        "--single-line",
+        action="store_true",
+        help=(
+            "Emit all generated prompts on a single line separated by spaces."
+        ),
+    )
     return parser
 
 
@@ -92,8 +99,14 @@ def main(argv: list[str] | None = None) -> None:
     if args.count is not None:
         verses = verses[: args.count]
 
-    for verse in verses:
-        print(generate_prompt(verse))
+    prompts = [generate_prompt(verse) for verse in verses]
+
+    if args.single_line:
+        if prompts:
+            print(" ".join(prompts))
+    else:
+        for prompt in prompts:
+            print(prompt)
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry point
